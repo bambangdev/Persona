@@ -90,34 +90,33 @@
             from { opacity: 1; transform: translateY(0); }
             to { opacity: 0; transform: translateY(-20px); }
         }
-
-        /* Animasi Kartu */
-        .card-pop-in {
-            opacity: 0;
-            transform: scale(0.9);
-            animation: popIn 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-        }
-        @keyframes popIn {
-            to {
-                opacity: 1;
-                transform: scale(1);
-            }
-        }
         
-        /* Animasi Loading Scanner */
-        .scanner-line {
-            position: absolute;
-            left: 0;
+        /* Animasi Card Flip */
+        .card-container {
+            perspective: 1000px;
+        }
+        .card-inner {
+            position: relative;
             width: 100%;
-            height: 2px;
-            background: var(--glow-color-blue);
-            box-shadow: 0 0 10px var(--glow-color-blue);
-            animation: scan 2s ease-in-out infinite;
+            height: 100%;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
         }
-        @keyframes scan {
-            0% { top: 10%; }
-            100% { top: 90%; }
+        .card-container.is-flipped .card-inner {
+            transform: rotateY(180deg);
         }
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            border-radius: 1rem;
+        }
+        .card-back {
+            transform: rotateY(180deg);
+        }
+
     </style>
 </head>
 <body class="animated-gradient flex items-center justify-center min-h-screen p-4">
@@ -214,16 +213,12 @@
             // State
             let currentPersonalityCode = null;
             let userName = '';
-            let quoteInterval = null;
+            let currentCards = [];
+            let revealedCardIndex = -1;
 
             // Constants
             const personalitiesOrder = ['The Oracle', 'The Architect', 'The Catalyst', 'The Guardian', 'The Explorer', 'The Maestro', 'The Alchemist', 'The Visionary', 'The Shaper'];
             const months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-            const loadingQuotes = {
-                self: ["Memindai matriks persona...", "Menganalisis spektrum kekuatan...", "Mengkalibrasi inti kesadaran..."],
-                kids: ["Menerjemahkan bahasa bintang...", "Mengintip ke dalam dunia ajaib...", "Menemukan kunci potensi si kecil..."],
-                couple: ["Memetakan konstelasi hubungan...", "Mendekode frekuensi cinta...", "Menganalisis sinergi romansa..."]
-            };
             const personalityData = {
                 'The Guardian': {self:{nama:"The Guardian (Sang Pelindung)",deskripsi:"Individu yang praktis, rajin, dan teliti. Kekuatannya terletak pada ingatan dan eksekusi yang detail.",points:{"Peran Alami":"Player (Pemain)","Kekuatan Kunci":"Efisien","Pendorong Utama":"Hasil Nyata","Jalan Kesuksesan":"Menguasai Panggung","Minat Khas":"Aktivitas Konkret","Isi Ulang Energi":"Berkeringat"}},kids:{nama:"Anak Guardian (Si Teliti)",deskripsi:"Si Rajin yang Teliti. Belajar dari meniru contoh nyata dan menyukai keteraturan.",points:{"Potensi Peran":"Si Rajin Peniru","Bakat Menonjol":"Jago karena Terbiasa","Pendorong Semangat":"Hadiah & Kepastian","Minat Khas":"Mengoleksi & Rutinitas","Semangat Lagi Dengan":"Bergerak & Berkeringat"}},couple:{nama:"Pasangan Guardian (Si Setia)",deskripsi:"Pasangan yang setia dan bertanggung jawab.",points:{"Kelebihan":"Setia & Bertanggung Jawab","Tantangan":"Terlihat Kaku","Bahasa Cinta":"Pelayanan & Bukti Nyata","Tips Harmonis":"Hargai Usahanya"}},icon:`<svg class="w-12 h-12 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.286zm-1.5 6.136a.75.75 0 011.06 0l1.72 1.72a.75.75 0 01-1.06 1.06l-1.72-1.72a.75.75 0 010-1.06z" /></svg>`},
                 'The Explorer': {self:{nama:"The Explorer (Sang Petualang)",deskripsi:"Individu yang energik, suka beraksi, dan menjadi pusat perhatian.",points:{"Peran Alami":"Frontliner","Kekuatan Kunci":"Momentum","Pendorong Utama":"Peluang & Pengalaman","Jalan Kesuksesan":"Menjadi Jaminan Diri","Minat Khas":"Hiburan & Aksi","Isi Ulang Energi":"Bermain"}},kids:{nama:"Anak Explorer (Si Pemberani)",deskripsi:"Si Petualang Cilik yang energik.",points:{"Potensi Peran":"Bintang Panggung","Bakat Menonjol":"Berani Mencoba","Pendorong Semangat":"Keseruan & Pujian","Minat Khas":"Olahraga & Permainan","Semangat Lagi Dengan":"Bermain & Tertawa"}},couple:{nama:"Pasangan Explorer (Si Seru)",deskripsi:"Pasangan yang seru dan penuh gairah.",points:{"Kelebihan":"Petualang yang Menyenangkan","Tantangan":"Mudah Bosan","Bahasa Cinta":"Momen Seru & Sentuhan Fisik","Tips Harmonis":"Ikuti Petualangannya"}},icon:`<svg class="w-12 h-12 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /></svg>`},
@@ -250,79 +245,41 @@
                 }, { once: true });
             }
 
-            function typewriter(element, text, speed = 50, callback) {
-                let i = 0;
-                element.innerHTML = "";
-                element.style.visibility = 'visible';
-                function type() {
-                    if (i < text.length) {
-                        element.innerHTML += text.charAt(i);
-                        i++;
-                        setTimeout(type, speed);
-                    } else if (callback) {
-                        callback();
-                    }
-                }
-                type();
-            }
-
             // --- UI Update Functions ---
-            async function renderReport(personalityCode, mode) {
+            async function initializeReport(personalityCode, mode) {
                 const data = personalityData[personalityCode];
                 const viewData = data[mode];
                 
-                // 1. Show a more entertaining loading screen
-                resultDashboard.innerHTML = `
-                    <div class="flex flex-col items-center justify-center p-8 min-h-[400px]">
-                        <div class="relative w-32 h-32 mb-6">
-                            <svg class="w-full h-full text-cyan-400/20" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg>
-                             <svg class="absolute top-0 left-0 w-full h-full text-cyan-400 opacity-80 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z" stroke-dasharray="10 5" /></svg>
-                            <div class="scanner-line"></div>
-                        </div>
-                        <p id="loading-quote-text" class="text-lg font-medium text-gray-300 h-8 text-center"></p>
-                    </div>`;
+                // Reset state
+                currentCards = [];
+                revealedCardIndex = -1;
 
-                const quoteElement = document.getElementById('loading-quote-text');
-                let quoteIndex = 0;
-                
-                const showNextQuote = () => {
-                    const quotes = loadingQuotes[mode];
-                    quoteElement.style.visibility = 'hidden';
-                    setTimeout(() => {
-                         typewriter(quoteElement, quotes[quoteIndex % quotes.length], 40);
-                         quoteIndex++;
-                    }, 200);
-                };
-                
-                showNextQuote();
-                quoteInterval = setInterval(showNextQuote, 3000);
+                // Show loading spinner while fetching AI data in background
+                resultDashboard.innerHTML = `<div class="flex items-center justify-center p-8 min-h-[400px]"><svg class="animate-spin h-10 w-10 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg></div>`;
 
-                // 2. Fetch data from our serverless function
                 try {
                     const prompt = generatePrompt(viewData, mode, userName);
-                    const response = await fetch('/api/generate', {
+                    const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
+                    const apiKey = ""; // Handled by environment
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+                    const response = await fetch(apiUrl, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ prompt: prompt })
+                        body: JSON.stringify(payload)
                     });
 
-                    if (!response.ok) {
-                        const errorBody = await response.json().catch(() => response.text());
-                        console.error('API Error Body:', errorBody);
-                        throw new Error(`API request failed: ${response.status}`);
-                    }
+                    if (!response.ok) throw new Error(`API request failed: ${response.status}`);
                     
                     const result = await response.json();
                     if (!result.candidates?.[0]?.content?.parts?.[0]?.text) throw new Error("Invalid AI response structure.");
                     
                     const generatedText = result.candidates[0].content.parts[0].text;
-                    const cards = parseAICards(generatedText);
+                    currentCards = parseAICards(generatedText);
                     
-                    clearInterval(quoteInterval);
-                    renderFinalUI(data, viewData, mode, cards);
+                    renderInitialCardUI(data, viewData, mode);
 
                 } catch (error) {
-                     clearInterval(quoteInterval);
                      console.error("Error fetching or rendering report:", error);
                      resultDashboard.innerHTML = `<div class="p-4 bg-red-900/50 border border-red-500 text-red-300 rounded-lg"><h3 class="font-bold">Oops! Terjadi Kesalahan Sistem</h3><p>Gagal memuat laporan dinamis dari AI. Silakan coba lagi.</p><p class="text-xs mt-2 opacity-50">${error.message}</p><button id="back-button-error" class="mt-4 bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-gray-500">Kembali</button></div>`;
                 }
@@ -343,50 +300,85 @@
                 }).filter(Boolean);
             }
 
-            function renderFinalUI(data, viewData, mode, cards) {
-                let headerGradientClass = 'from-blue-500 to-cyan-500';
+            function renderInitialCardUI(data, viewData, mode) {
+                 let headerGradientClass = 'from-blue-500 to-cyan-500';
                 if (mode === 'kids') headerGradientClass = 'from-green-500 to-emerald-500';
                 if (mode === 'couple') headerGradientClass = 'from-purple-500 to-fuchsia-500';
 
-                const backButtonHTML = `<div class="mb-4 flex justify-between items-center"><button id="back-to-mode-selection-button" class="bg-white/10 text-white font-semibold py-2 px-4 rounded-lg hover:bg-white/20 transition-colors duration-300 flex items-center text-sm"><svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>Pilih Mode Lain</button><button id="download-pdf-button" class="bg-yellow-400 text-yellow-900 font-bold py-2 px-4 rounded-lg hover:bg-yellow-500 transition-colors duration-300 flex items-center text-sm"><svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>Unduh PDF</button></div>`;
-
-                const cardsHTML = cards.map((card, index) => `
-                    <div class="report-card glassmorphism rounded-lg p-4 text-left flex items-start space-x-4" style="animation-delay: ${index * 100}ms;">
-                        <div class="text-3xl mt-1">${card.emoji}</div>
-                        <div>
-                            <h4 class="font-bold text-white">${card.title}</h4>
-                            <p class="text-gray-300 mt-1">${card.content}</p>
-                            <p class="text-gray-400 text-sm mt-3 italic border-l-2 border-blue-400/50 pl-3"><strong class="font-semibold text-gray-300">Contoh:</strong> ${card.example}</p>
-                        </div>
-                    </div>`).join('');
-                
                 resultDashboard.innerHTML = `
                     <div id="report-content" class="text-left">
-                        <div class="p-6 bg-gradient-to-r ${headerGradientClass} text-white rounded-t-lg">
-                            ${backButtonHTML}
+                        <div id="report-header" class="p-6 bg-gradient-to-r ${headerGradientClass} text-white rounded-lg mb-6">
+                             <div class="mb-4 flex justify-between items-center opacity-0" id="final-buttons">
+                                <button id="back-to-mode-selection-button" class="bg-white/10 text-white font-semibold py-2 px-4 rounded-lg hover:bg-white/20 transition-colors duration-300 flex items-center text-sm"><svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>Pilih Mode Lain</button>
+                                <button id="download-pdf-button" class="bg-yellow-400 text-yellow-900 font-bold py-2 px-4 rounded-lg hover:bg-yellow-500 transition-colors duration-300 flex items-center text-sm"><svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>Unduh PDF</button>
+                             </div>
                             <div class="flex flex-col sm:flex-row items-center">
                                 <div class="w-20 h-20 rounded-full bg-white/20 flex items-center justify-center mr-0 sm:mr-5 mb-4 sm:mb-0 shrink-0">${data.icon}</div>
                                 <div class="text-center sm:text-left">
-                                    <h2 id="report-title" class="text-3xl font-orbitron font-extrabold text-white"></h2>
-                                    <p id="report-description" class="text-white/80 mt-1"></p>
+                                    <h2 class="text-3xl font-orbitron font-extrabold text-white">${viewData.nama}</h2>
+                                    <p class="text-white/80 mt-1">${viewData.deskripsi}</p>
                                 </div>
                             </div>
                         </div>
-                        <div class="p-6 grid grid-cols-1 lg:grid-cols-2 gap-4 bg-black/20 rounded-b-lg">
-                            ${cardsHTML}
+                        <div id="revealed-cards-container" class="space-y-4">
+                            <!-- Kartu yang terungkap akan ditambahkan di sini -->
+                        </div>
+                        <div class="mt-8 text-center">
+                            <button id="reveal-next-card-button" style="--glow-color: var(--glow-color-blue);" class="glow-button bg-blue-600 text-white font-bold py-4 px-6 rounded-lg text-xl">
+                                UNGKAP PERSONA
+                            </button>
                         </div>
                     </div>`;
-
-                // Apply animations after rendering
-                const reportTitle = document.getElementById('report-title');
-                const reportDescription = document.getElementById('report-description');
-                const reportCards = document.querySelectorAll('.report-card');
+            }
+            
+            function revealNextCard() {
+                revealedCardIndex++;
+                if (revealedCardIndex >= currentCards.length) {
+                    return; // Semua kartu sudah terungkap
+                }
                 
-                typewriter(reportTitle, viewData.nama, 75, () => {
-                    typewriter(reportDescription, viewData.deskripsi, 20, () => {
-                         reportCards.forEach(card => card.classList.add('card-pop-in'));
-                    });
-                });
+                const cardData = currentCards[revealedCardIndex];
+                const cardContainer = document.getElementById('revealed-cards-container');
+                
+                const cardHTML = `
+                    <div class="card-container h-48 md:h-40">
+                        <div class="card-inner">
+                            <div class="card-face card-front glassmorphism flex flex-col items-center justify-center p-4 border-2 border-cyan-400/50">
+                                <div class="w-16 h-16 text-cyan-400">
+                                    <svg fill="none" viewBox="0 0 52 52" xmlns="http://www.w3.org/2000/svg">
+                                        <g><path d="M44 38.6538C44 45.9231 36.1667 49 26 49C15.8333 49 8 45.9231 8 38.6538C8 31.3846 15.8333 17.6154 26 3C36.1667 17.6154 44 31.3846 44 38.6538Z" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M35 38.5C35 43.7467 31.0457 48 26 48C20.9543 48 17 43.7467 17 38.5C17 33.2533 20.9543 29 26 29C31.0457 29 35 33.2533 35 38.5Z" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.4"/></g>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="card-face card-back glassmorphism p-4 text-left flex items-start space-x-4">
+                               <div class="text-3xl mt-1">${cardData.emoji}</div>
+                                <div>
+                                    <h4 class="font-bold text-white">${cardData.title}</h4>
+                                    <p class="text-gray-300 mt-1 text-sm md:text-base">${cardData.content}</p>
+                                    <p class="text-gray-400 text-xs md:text-sm mt-2 italic border-l-2 border-blue-400/50 pl-3"><strong class="font-semibold text-gray-300">Contoh:</strong> ${cardData.example}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+                
+                const newCardElement = document.createElement('div');
+                newCardElement.innerHTML = cardHTML;
+                cardContainer.appendChild(newCardElement);
+                
+                // Trigger the flip animation
+                setTimeout(() => {
+                    newCardElement.querySelector('.card-container').classList.add('is-flipped');
+                }, 100);
+
+                // Update the button
+                const revealButton = document.getElementById('reveal-next-card-button');
+                if (revealedCardIndex === currentCards.length - 1) {
+                    revealButton.classList.add('section-exit');
+                     document.getElementById('final-buttons').classList.add('opacity-100');
+
+                } else {
+                    revealButton.textContent = "Ungkap Sifat Berikutnya";
+                }
             }
 
 
@@ -433,13 +425,12 @@
                 const mode = button.dataset.mode;
                 if (currentPersonalityCode) {
                     switchView(modeSelectionDiv, resultDashboard, () => {
-                        renderReport(currentPersonalityCode, mode);
+                        initializeReport(currentPersonalityCode, mode);
                     });
                 }
             }
             
             function goBackToModeSelection() {
-                if (quoteInterval) clearInterval(quoteInterval);
                 switchView(resultDashboard, modeSelectionDiv);
             }
             
@@ -469,6 +460,8 @@
                     goBackToInput();
                 } else if (targetId === 'back-to-mode-selection-button' || closestButtonId === 'back-to-mode-selection-button' || targetId === 'back-button-error') {
                     goBackToModeSelection();
+                } else if (targetId === 'reveal-next-card-button' || closestButtonId === 'reveal-next-card-button') {
+                    revealNextCard();
                 } else if (targetId === 'download-pdf-button' || closestButtonId === 'download-pdf-button') {
                     const { jsPDF } = window.jspdf;
                     const reportContent = document.getElementById('report-content');
