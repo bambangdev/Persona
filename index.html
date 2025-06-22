@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mesin Analisis Kepribadian (AI)</title>
+    <!-- Memuat Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Memuat Google Fonts: Inter & Orbitron -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+    <!-- Memuat html2canvas dan jsPDF untuk fitur unduh laporan -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        :root {
+            --glow-color-blue: #00b8ff;
+            --glow-color-green: #24ff72;
+            --glow-color-purple: #c561ff;
+        }
+
+        body { 
+            font-family: 'Inter', sans-serif; 
+            scroll-behavior: smooth;
+            background: #121217;
+            color: #e2e8f0;
+        }
+
+        .font-orbitron { font-family: 'Orbitron', sans-serif; }
+
+        .animated-gradient {
+            background: linear-gradient(-45deg, #0f0c29, #302b63, #24243e, #1a2a6c);
+            background-size: 400% 400%;
+            animation: gradient-animation 15s ease infinite;
+        }
+
+        @keyframes gradient-animation {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        .glassmorphism {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        select {
+            -webkit-appearance: none; -moz-appearance: none; appearance: none;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 0.5rem center;
+            background-repeat: no-repeat; background-size: 1.5em 1.5em;
+            padding-right: 2.5rem;
+        }
+
+        .form-input {
+            background-color: rgba(0,0,0,0.2);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        .form-input:focus {
+            background-color: rgba(0,0,0,0.3);
+            border-color: var(--glow-color-blue);
+            box-shadow: 0 0 10px 2px var(--glow-color-blue);
+        }
+        
+        .glow-button {
+            transition: all 0.3s ease;
+            box-shadow: 0 0 5px var(--glow-color), 0 0 10px var(--glow-color);
+        }
+        .glow-button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 0 15px var(--glow-color), 0 0 30px var(--glow-color);
+        }
+        .glow-button:disabled {
+             box-shadow: none;
+        }
+        
+        /* Animasi Transisi Halaman */
+        .section-enter { animation: fadeInDown 0.5s ease-out both; }
+        .section-exit { animation: fadeOutUp 0.5s ease-in both; }
+
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeOutUp {
+            from { opacity: 1; transform: translateY(0); }
+            to { opacity: 0; transform: translateY(-20px); }
+        }
+
+        /* Animasi Kartu */
+        .card-pop-in {
+            opacity: 0;
+            transform: scale(0.9);
+            animation: popIn 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+        }
+        @keyframes popIn {
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+    </style>
+</head>
+<body class="animated-gradient flex items-center justify-center min-h-screen p-4">
+
+    <div id="app" class="glassmorphism p-6 md:p-8 rounded-2xl shadow-2xl w-full max-w-4xl text-center overflow-hidden">
+        
+        <!-- Tampilan Awal: Input Data Pengguna -->
+        <div id="input-section">
+            <h1 class="font-orbitron text-3xl md:text-4xl font-bold text-white mb-2 uppercase tracking-widest" style="text-shadow: 0 0 10px var(--glow-color-blue);">Personality Scan</h1>
+            <p class="text-gray-300 mb-8">Masukkan data untuk memulai analisis kepribadian oleh AI.</p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <input type="text" id="userName" placeholder="Masukkan Nama Anda" class="form-input md:col-span-3 w-full p-3 rounded-lg shadow-sm focus:outline-none transition-all placeholder-gray-400 text-white">
+                <select id="birthDay" class="date-input form-input w-full p-3 rounded-lg shadow-sm focus:outline-none transition-all text-white">
+                    <option value="">Tanggal</option>
+                </select>
+                <select id="birthMonth" class="date-input form-input w-full p-3 rounded-lg shadow-sm focus:outline-none transition-all text-white">
+                    <option value="">Bulan</option>
+                </select>
+                <select id="birthYear" class="date-input form-input w-full p-3 rounded-lg shadow-sm focus:outline-none transition-all text-white">
+                    <option value="">Tahun</option>
+                </select>
+            </div>
+            <button id="analyze-button" style="--glow-color: var(--glow-color-blue);" class="glow-button w-full bg-blue-600 text-white font-bold py-4 px-6 rounded-lg transition-all duration-300 text-xl opacity-50 cursor-not-allowed" disabled>
+                Mulai Analisis
+            </button>
+        </div>
+
+        <!-- Tampilan Proses Kalkulasi -->
+        <div id="calculating-section" class="hidden">
+             <h2 class="font-orbitron text-2xl text-white mb-4">MENGKALKULASI ARCHETYPE...</h2>
+             <div id="personality-spinner" class="text-4xl font-orbitron font-black text-white" style="text-shadow: 0 0 15px #fff;">The Oracle</div>
+        </div>
+
+        <!-- Tampilan Pilihan Mode -->
+        <div id="mode-selection" class="hidden">
+             <p class="text-gray-200 font-medium mb-4 text-xl">Scan untuk <strong id="report-name" class="text-blue-400 font-bold"></strong> selesai! Pilih mode laporan:</p>
+             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                <button data-mode="self" style="--glow-color: var(--glow-color-blue);" class="mode-button glow-button w-full bg-blue-600 text-white font-bold py-4 px-4 rounded-lg text-lg">
+                    🔍 Diri Sendiri
+                </button>
+                <button data-mode="kids" style="--glow-color: var(--glow-color-green);" class="mode-button glow-button w-full bg-green-600 text-white font-bold py-4 px-4 rounded-lg text-lg">
+                    🧸 Anak
+                </button>
+                 <button data-mode="couple" style="--glow-color: var(--glow-color-purple);" class="mode-button glow-button w-full bg-purple-600 text-white font-bold py-4 px-4 rounded-lg text-lg">
+                    ❤️ Pasangan
+                </button>
+             </div>
+             <button id="back-to-home-button" class="text-gray-400 hover:text-white hover:bg-white/10 py-2 px-4 rounded-lg transition-colors">Kembali ke Awal</button>
+        </div>
+
+        <!-- Tampilan Hasil -->
+        <div id="result-dashboard" class="hidden"></div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // DOM Elements
+            const daySelect = document.getElementById('birthDay');
+            const monthSelect = document.getElementById('birthMonth');
+            const yearSelect = document.getElementById('birthYear');
+            const nameInput = document.getElementById('userName');
+            const analyzeButton = document.getElementById('analyze-button');
+            const appDiv = document.getElementById('app');
+            
+            // Sections
+            const inputSection = document.getElementById('input-section');
+            const calculatingSection = document.getElementById('calculating-section');
+            const modeSelectionDiv = document.getElementById('mode-selection');
+            const resultDashboard = document.getElementById('result-dashboard');
+            
+            // Dynamic Elements
+            const reportNameSpan = document.getElementById('report-name');
+            const personalitySpinner = document.getElementById('personality-spinner');
+
+            // State
+            let currentPersonalityCode = null;
+            let userName = '';
+
+            // Constants
+            const personalitiesOrder = ['The Oracle', 'The Architect', 'The Catalyst', 'The Guardian', 'The Explorer', 'The Maestro', 'The Alchemist', 'The Visionary', 'The Shaper'];
+            const months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+            const loadingQuotes = {
+                self: ["Memindai memori internal...", "Menganalisis matriks potensi diri...", "Mengkalibrasi spektrum kekuatan..."],
+                kids: ["Menerjemahkan bahasa bintang si kecil...", "Mengintip ke dalam dunia ajaibnya...", "Menemukan kunci potensi luar biasa..."],
+                couple: ["Memetakan konstelasi hubungan...", "Mendekode frekuensi cinta...", "Menganalisis sinergi romansa..."]
+            };
+            const personalityData = {
+                'The Guardian': {self:{nama:"The Guardian (Sang Pelindung)",deskripsi:"Individu yang praktis, rajin, dan teliti. Kekuatannya terletak pada ingatan dan eksekusi yang detail.",points:{"Peran Alami":"Player (Pemain)","Kekuatan Kunci":"Efisien","Pendorong Utama":"Hasil Nyata","Jalan Kesuksesan":"Menguasai Panggung","Minat Khas":"Aktivitas Konkret","Isi Ulang Energi":"Berkeringat"}},kids:{nama:"Anak Guardian (Si Teliti)",deskripsi:"Si Rajin yang Teliti. Belajar dari meniru contoh nyata dan menyukai keteraturan.",points:{"Potensi Peran":"Si Rajin Peniru","Bakat Menonjol":"Jago karena Terbiasa","Pendorong Semangat":"Hadiah & Kepastian","Minat Khas":"Mengoleksi & Rutinitas","Semangat Lagi Dengan":"Bergerak & Berkeringat"}},couple:{nama:"Pasangan Guardian (Si Setia)",deskripsi:"Pasangan yang setia dan bertanggung jawab.",points:{"Kelebihan":"Setia & Bertanggung Jawab","Tantangan":"Terlihat Kaku","Bahasa Cinta":"Pelayanan & Bukti Nyata","Tips Harmonis":"Hargai Usahanya"}},icon:`<svg class="w-12 h-12 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.286zm-1.5 6.136a.75.75 0 011.06 0l1.72 1.72a.75.75 0 01-1.06 1.06l-1.72-1.72a.75.75 0 010-1.06z" /></svg>`},
+                'The Explorer': {self:{nama:"The Explorer (Sang Petualang)",deskripsi:"Individu yang energik, suka beraksi, dan menjadi pusat perhatian.",points:{"Peran Alami":"Frontliner","Kekuatan Kunci":"Momentum","Pendorong Utama":"Peluang & Pengalaman","Jalan Kesuksesan":"Menjadi Jaminan Diri","Minat Khas":"Hiburan & Aksi","Isi Ulang Energi":"Bermain"}},kids:{nama:"Anak Explorer (Si Pemberani)",deskripsi:"Si Petualang Cilik yang energik.",points:{"Potensi Peran":"Bintang Panggung","Bakat Menonjol":"Berani Mencoba","Pendorong Semangat":"Keseruan & Pujian","Minat Khas":"Olahraga & Permainan","Semangat Lagi Dengan":"Bermain & Tertawa"}},couple:{nama:"Pasangan Explorer (Si Seru)",deskripsi:"Pasangan yang seru dan penuh gairah.",points:{"Kelebihan":"Petualang yang Menyenangkan","Tantangan":"Mudah Bosan","Bahasa Cinta":"Momen Seru & Sentuhan Fisik","Tips Harmonis":"Ikuti Petualangannya"}},icon:`<svg class="w-12 h-12 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /></svg>`},
+                'The Architect': {self:{nama:"The Architect (Sang Arsitek)",deskripsi:"Pemikir logis, rasional, dan mendalam.",points:{"Peran Alami":"Pakar (Expert)","Kekuatan Kunci":"Efektif & Tepat Sasaran","Pendorong Utama":"Pengakuan & Logika","Jalan Kesuksesan":"Membangun Kepakaran","Minat Khas":"Memecahkan Masalah","Isi Ulang Energi":"Kontak dengan Alam"}},kids:{nama:"Anak Architect (Si Logis)",deskripsi:"Si Jenius Kecil yang logis.",points:{"Potensi Peran":"Ahli Strategi","Bakat Menonjol":"Penalaran Kuat","Pendorong Semangat":"Jawaban Logis & Kemenangan","Minat Khas":"Puzzle & Eksperimen","Semangat Lagi Dengan":"Kontak dengan Alam"}},couple:{nama:"Pasangan Architect (Si Tenang)",deskripsi:"Pemecah masalah yang tenang dan logis.",points:{"Kelebihan":"Pilar Logika & Ketenangan","Tantangan":"Terlihat Kaku","Bahasa Cinta":"Ruang Pribadi & Diskusi Intelektual","Tips Harmonis":"Hargai Logikanya"}},icon:`<svg class="w-12 h-12 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" /></svg>`},
+                'The Shaper': {self:{nama:"The Shaper (Sang Pembentuk)",deskripsi:"Pemimpin tegas yang handal dalam mengelola sistem.",points:{"Peran Alami":"Pemimpin Proyek (Chief)","Kekuatan Kunci":"Menggandakan Hasil","Pendorong Utama":"Kekuasaan & Wewenang","Jalan Kesuksesan":"Memperluas Organisasi","Minat Khas":"Manajemen & Strategi","Isi Ulang Energi":"Wisata (Mobilitas)"}},kids:{nama:"Anak Shaper (Si Pemimpin)",deskripsi:"Si Pemimpin Cilik yang tegas.",points:{"Potensi Peran":"Sang Komandan","Bakat Menonjol":"Mengatur & Mengelola","Pendorong Semangat":"Tanggung Jawab","Minat Khas":"Proyek & Kompetisi","Semangat Lagi Dengan":"Jalan-Jalan"}},couple:{nama:"Pasangan Shaper (Si Manajer)",deskripsi:"'Manajer' hubungan yang protektif.",points:{"Kelebihan":"Pelindung & Pengambil Keputusan","Tantangan":"Suka Mengatur","Bahasa Cinta":"Komitmen & Dukungan Nyata","Tips Harmonis":"Hormati Kepemimpinannya"}},icon:`<svg class="w-12 h-12 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" /></svg>`},
+                'The Visionary': {self:{nama:"The Visionary (Sang Visioner)",deskripsi:"Pencipta yang kreatif, unik, dan berorientasi masa depan.",points:{"Peran Alami":"Penggagas (Initiator)","Kekuatan Kunci":"Penciptaan (Invention)","Pendorong Utama":"Karya & Kualitas","Jalan Kesuksesan":"Melahirkan Karya Berkualitas","Minat Khas":"Imajinasi & Konsep","Isi Ulang Energi":"Tidur & Merenung"}},kids:{nama:"Anak Visionary (Si Pemimpi)",deskripsi:"Si Pemimpi Kreatif.",points:{"Potensi Peran":"Pencipta Cerita","Bakat Menonjol":"Imajinasi Tanpa Batas","Pendorong Semangat":"Kebebasan Berkreasi","Minat Khas":"Mengarang & Mendesain","Semangat Lagi Dengan":"Tidur & Melamun"}},couple:{nama:"Pasangan Visionary (Si Unik)",deskripsi:"Pasangan unik yang mendalam.",points:{"Kelebihan":"Inspirator & Pemberi Makna","Tantangan":"Sering Absen Pikiran","Bahasa Cinta":"Koneksi Ide & Apresiasi Karya","Tips Harmonis":"Beri Ruang untuk Melamun"}},icon:`<svg class="w-12 h-12 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.355a15.049 15.049 0 01-6 0m3.75-12.855a12.06 12.06 0 00-4.5 0" /></svg>`},
+                'The Alchemist': {self:{nama:"The Alchemist (Sang Alkemis)",deskripsi:"Inovator visioner yang dinamis dan suka mencari ide baru.",points:{"Peran Alami":"Pembaharu (Reformer)","Kekuatan Kunci":"Inovasi","Pendorong Utama":"Peluang Bisnis","Jalan Kesuksesan":"Membangun Bisnis","Minat Khas":"Tren Baru","Isi Ulang Energi":"Menonton Film Inspiratif"}},kids:{nama:"Anak Alchemist (Si Penemu)",deskripsi:"Si Penemu Ide yang selalu punya akal.",points:{"Potensi Peran":"Inovator Permainan","Bakat Menonjol":"Menemukan Pola","Pendorong Semangat":"Kebaruan & Proyek","Minat Khas":"Eksperimen & Jualan","Semangat Lagi Dengan":"Menonton & Mendapat Inspirasi"}},couple:{nama:"Pasangan Alchemist (Si Dinamis)",deskripsi:"Pasangan dinamis yang selalu mencari cara baru.",points:{"Kelebihan":"Inovator Hubungan","Tantangan":"Cepat Bosan","Bahasa Cinta":"Dukungan pada Proyek","Tips Harmonis":"Jadilah Partner Diskusi"}},icon:`<svg class="w-12 h-12 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path d="M15.042 21.672L13.684 16.6m0 0l-2.51 2.225.569-9.47 5.223 5.223h-5.223z" /><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`},
+                'The Maestro': {self:{nama:"The Maestro (Sang Maestro)",deskripsi:"Pemimpin empatik yang hangat dan mendalam.",points:{"Peran Alami":"Pemimpin Hati (Leader)","Kekuatan Kunci":"Popularitas","Pendorong Utama":"Penerimaan & Kasih Sayang","Jalan Kesuksesan":"Membangun Pengaruh","Minat Khas":"Manusia & Hubungan","Cara Isi Ulang Energi":"Curhat (Berbagi Cerita)"}},kids:{nama:"Anak Maestro (Si Perasa)",deskripsi:"Si Hati Lembut yang perasa.",points:{"Potensi Peran":"Sang Idola","Bakat Menonjol":"Memikat Hati","Pendorong Semangat":"Kasih Sayang","Minat Khas":"Drama & Seni Peran","Semangat Lagi Dengan":"Curhat & Dipeluk"}},couple:{nama:"Pasangan Maestro (Si Romantis)",deskripsi:"Pasangan paling romantis dan mendalam.",points:{"Kelebihan":"Penyayang & Pendengar Setia","Tantangan":"Sangat Sensitif (Baperan)","Bahasa Cinta":"Kata-kata Pujian & Waktu Berkualitas","Tips Harmonis":"Banjiri dengan Kasih Sayang"}},icon:`<svg class="w-12 h-12 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg>`},
+                'The Catalyst': {self:{nama:"The Catalyst (Sang Katalis)",deskripsi:"Sosok sosial yang suka memberdayakan orang lain.",points:{"Peran Alami":"Pemilik Tim (Owner)","Kekuatan Kunci":"Memperbesar Potensi Orang","Pendorong Utama":"Memberi & Menolong","Jalan Kesuksesan":"Membangun Kader","Minat Khas":"Pemberdayaan & Komunitas","Cara Isi Ulang Energi":"Bercengkrama"}},kids:{nama:"Anak Catalyst (Si Sosial)",deskripsi:"Si Sahabat Semua yang sosial.",points:{"Potensi Peran":"Sang Penghubung","Bakat Menonjol":"Membangun Hubungan","Pendorong Semangat":"Interaksi & Kebersamaan","Minat Khas":"Bermain Kelompok","Semangat Lagi Dengan":"Kumpul & Ngobrol"}},couple:{nama:"Pasangan Catalyst (Si Hangat)",deskripsi:"Pasangan sosial yang peduli.",points:{"Kelebihan":"Tuan Rumah yang Hangat","Tantangan":"Butuh Pengakuan Sosial","Bahasa Cinta":"Didengarkan & Dilibatkan","Tips Harmonis":"Jadilah Pendengar yang Baik"}},icon:`<svg class="w-12 h-12 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m-7.5-2.962a3.752 3.752 0 01-4.49-4.49 3.752 3.752 0 014.49-4.49 3.752 3.752 0 014.49 4.49 3.752 3.752 0 01-4.49 4.49z" /><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m.75 12l3 3m0 0l3-3m-3 3v-6m-1.5-9H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>`},
+                'The Oracle': {self:{nama:"The Oracle (Sang Peramal)",deskripsi:"Pendamai yang spontan, pragmatis, dan serba bisa.",points:{"Peran Alami":"Partner (Pendamping)","Kekuatan Kunci":"Naluri (Intuisi Tajam)","Pendorong Utama":"Kebahagiaan & Kedamaian","Jalan Kesuksesan":"Mengambil Banyak Peran","Minat Khas":"Kontribusi Sosial","Cara Isi Ulang Energi":"Silaturahmi"}},kids:{nama:"Anak Oracle (Si Bijak)",deskripsi:"Si Pendamai yang Bijak.",points:{"Potensi Peran":"Sang Mediator","Bakat Menonjol":"Naluri & Empati Spontan","Pendorong Semangat":"Kedamaian Bersama","Minat Khas":"Menolong & Aktivitas Sosial","Semangat Lagi Dengan":"Silaturahmi & Lingkungan Damai"}},couple:{nama:"Pasangan Oracle (Si Adaptif)",deskripsi:"Pasangan pendamai yang adaptif.",points:{"Kelebihan":"Pendamai & Penyeimbang","Tantangan":"Sulit Ditebak & Pasif","Bahasa Cinta":"Kedamaian & Pengorbanan","Tips Harmonis":"Ciptakan Suasana Damai"}},icon:`<svg class="w-12 h-12 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>`},
+            };
+            
+            // --- Helper Functions ---
+            function switchView(hideEl, showEl, callback) {
+                if (!hideEl || !showEl) return;
+                hideEl.classList.add('section-exit');
+                hideEl.addEventListener('animationend', () => {
+                    hideEl.classList.add('hidden');
+                    hideEl.classList.remove('section-exit');
+                    
+                    showEl.classList.remove('hidden');
+                    showEl.classList.add('section-enter');
+                    if (callback) callback();
+                }, { once: true });
+            }
+
+            function typewriter(element, text, speed = 50, callback) {
+                let i = 0;
+                element.innerHTML = "";
+                function type() {
+                    if (i < text.length) {
+                        element.innerHTML += text.charAt(i);
+                        i++;
+                        setTimeout(type, speed);
+                    } else if (callback) {
+                        callback();
+                    }
+                }
+                type();
+            }
+
+            // --- UI Update Functions ---
+            async function renderReport(personalityCode, mode) {
+                const data = personalityData[personalityCode];
+                const viewData = data[mode];
+                
+                // 1. Show Loading Indicator
+                resultDashboard.innerHTML = `
+                    <div class="text-center p-8">
+                        <div class="flex justify-center items-center">
+                            <svg class="animate-spin -ml-1 mr-3 h-8 w-8 text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <p class="text-lg font-medium text-gray-300">${loadingQuotes[mode][Math.floor(Math.random() * loadingQuotes[mode].length)]}</p>
+                        </div>
+                    </div>`;
+
+                // 2. Fetch data from our serverless function
+                try {
+                    const prompt = generatePrompt(viewData, mode, userName);
+                    const response = await fetch('/api/generate', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ prompt: prompt })
+                    });
+
+                    if (!response.ok) {
+                        const errorBody = await response.json().catch(() => response.text());
+                        console.error('API Error Body:', errorBody);
+                        throw new Error(`API request failed: ${response.status}`);
+                    }
+                    
+                    const result = await response.json();
+                    if (!result.candidates?.[0]?.content?.parts?.[0]?.text) throw new Error("Invalid AI response structure.");
+                    
+                    const generatedText = result.candidates[0].content.parts[0].text;
+                    const cards = parseAICards(generatedText);
+                    
+                    // 3. Render final report
+                    renderFinalUI(data, viewData, mode, cards);
+
+                } catch (error) {
+                     console.error("Error fetching or rendering report:", error);
+                     resultDashboard.innerHTML = `<div class="p-4 bg-red-900/50 border border-red-500 text-red-300 rounded-lg"><h3 class="font-bold">Oops! Terjadi Kesalahan Sistem</h3><p>Gagal memuat laporan dinamis dari AI. Silakan coba lagi.</p><p class="text-xs mt-2 opacity-50">${error.message}</p><button id="back-button-error" class="mt-4 bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-gray-500">Kembali</button></div>`;
+                }
+            }
+            
+            function parseAICards(generatedText) {
+                return generatedText.split('\n\n').map(line => {
+                    const parts = line.split('||');
+                    if (parts.length < 3) return null;
+                    const header = parts[0].trim();
+                    const mainContent = parts[1].trim();
+                    const example = parts[2].trim().replace(/^Contoh Kasus:\s*/i, '');
+                    const emojiMatch = header.match(/^\S+/);
+                    if (!emojiMatch) return null;
+                    const emoji = emojiMatch[0];
+                    const title = header.replace(emoji, '').trim();
+                    return { emoji, title, content: mainContent, example };
+                }).filter(Boolean);
+            }
+
+            function renderFinalUI(data, viewData, mode, cards) {
+                let headerGradientClass = 'from-blue-500 to-cyan-500';
+                if (mode === 'kids') headerGradientClass = 'from-green-500 to-emerald-500';
+                if (mode === 'couple') headerGradientClass = 'from-purple-500 to-fuchsia-500';
+
+                const backButtonHTML = `<div class="mb-4 flex justify-between items-center"><button id="back-to-mode-selection-button" class="bg-white/10 text-white font-semibold py-2 px-4 rounded-lg hover:bg-white/20 transition-colors duration-300 flex items-center text-sm"><svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>Pilih Mode Lain</button><button id="download-pdf-button" class="bg-yellow-400 text-yellow-900 font-bold py-2 px-4 rounded-lg hover:bg-yellow-500 transition-colors duration-300 flex items-center text-sm"><svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>Unduh PDF</button></div>`;
+
+                const cardsHTML = cards.map((card, index) => `
+                    <div class="report-card glassmorphism rounded-lg p-4 text-left flex items-start space-x-4" style="animation-delay: ${index * 100}ms;">
+                        <div class="text-3xl mt-1">${card.emoji}</div>
+                        <div>
+                            <h4 class="font-bold text-white">${card.title}</h4>
+                            <p class="text-gray-300 mt-1">${card.content}</p>
+                            <p class="text-gray-400 text-sm mt-3 italic border-l-2 border-blue-400/50 pl-3"><strong class="font-semibold text-gray-300">Contoh:</strong> ${card.example}</p>
+                        </div>
+                    </div>`).join('');
+                
+                resultDashboard.innerHTML = `
+                    <div id="report-content" class="text-left">
+                        <div class="p-6 bg-gradient-to-r ${headerGradientClass} text-white rounded-t-lg">
+                            ${backButtonHTML}
+                            <div class="flex flex-col sm:flex-row items-center">
+                                <div class="w-20 h-20 rounded-full bg-white/20 flex items-center justify-center mr-0 sm:mr-5 mb-4 sm:mb-0 shrink-0">${data.icon}</div>
+                                <div class="text-center sm:text-left">
+                                    <h2 id="report-title" class="text-3xl font-orbitron font-extrabold text-white"></h2>
+                                    <p id="report-description" class="text-white/80 mt-1"></p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="p-6 grid grid-cols-1 lg:grid-cols-2 gap-4 bg-black/20 rounded-b-lg">
+                            ${cardsHTML}
+                        </div>
+                    </div>`;
+
+                // Apply animations after rendering
+                const reportTitle = document.getElementById('report-title');
+                const reportDescription = document.getElementById('report-description');
+                const reportCards = document.querySelectorAll('.report-card');
+                
+                typewriter(reportTitle, viewData.nama, 75, () => {
+                    typewriter(reportDescription, viewData.deskripsi, 20, () => {
+                         reportCards.forEach(card => card.classList.add('card-pop-in'));
+                    });
+                });
+            }
+
+
+            // --- Event Handlers ---
+            function handleDateChange() {
+                if (nameInput.value && daySelect.value && monthSelect.value && yearSelect.value) {
+                    analyzeButton.disabled = false;
+                    analyzeButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                } else {
+                    analyzeButton.disabled = true;
+                    analyzeButton.classList.add('opacity-50', 'cursor-not-allowed');
+                }
+            }
+
+            function handleAnalyze() {
+                userName = nameInput.value;
+                const day = parseInt(daySelect.value, 10);
+                const month = parseInt(monthSelect.value, 10);
+                const year = parseInt(yearSelect.value, 10);
+                
+                const total = year + month + day;
+                const mod = total % 9;
+                const finalPersonalityCode = personalitiesOrder[mod];
+
+                switchView(inputSection, calculatingSection, () => {
+                    let spinCount = 0;
+                    const spinInterval = setInterval(() => {
+                        personalitySpinner.textContent = personalitiesOrder[Math.floor(Math.random() * personalitiesOrder.length)];
+                        spinCount++;
+                        if (spinCount > 20) { // Spin for a bit
+                            clearInterval(spinInterval);
+                            personalitySpinner.textContent = finalPersonalityCode;
+                            currentPersonalityCode = finalPersonalityCode;
+                            reportNameSpan.textContent = userName;
+                            setTimeout(() => switchView(calculatingSection, modeSelectionDiv), 1000);
+                        }
+                    }, 100);
+                });
+            }
+
+            function handleModeSelection(event) {
+                const button = event.target.closest('.mode-button');
+                if (!button) return;
+                const mode = button.dataset.mode;
+                if (currentPersonalityCode) {
+                    switchView(modeSelectionDiv, resultDashboard, () => {
+                        renderReport(currentPersonalityCode, mode);
+                    });
+                }
+            }
+            
+            function goBackToModeSelection() {
+                switchView(resultDashboard, modeSelectionDiv);
+            }
+            
+            function goBackToInput() {
+                switchView(modeSelectionDiv, inputSection);
+            }
+
+            function populateDateInputs() {
+                for (let i = 1; i <= 31; i++) { daySelect.innerHTML += `<option value="${i}">${i}</option>`; }
+                months.forEach((month, index) => { monthSelect.innerHTML += `<option value="${index + 1}">${month}</option>`; });
+                const currentYear = new Date().getFullYear();
+                for (let i = currentYear; i >= 1950; i--) { yearSelect.innerHTML += `<option value="${i}">${i}</option>`; }
+            }
+            
+            // --- Initial Setup & Listeners ---
+            populateDateInputs();
+            document.querySelectorAll('.date-input, #userName').forEach(input => input.addEventListener('input', handleDateChange));
+            analyzeButton.addEventListener('click', handleAnalyze);
+            
+            appDiv.addEventListener('click', function(event) {
+                const targetId = event.target.id;
+                const closestButtonId = event.target.closest('button')?.id;
+
+                if (event.target.closest('.mode-button')) {
+                    handleModeSelection(event);
+                } else if (targetId === 'back-to-home-button' || closestButtonId === 'back-to-home-button') {
+                    goBackToInput();
+                } else if (targetId === 'back-to-mode-selection-button' || closestButtonId === 'back-to-mode-selection-button' || targetId === 'back-button-error') {
+                    goBackToModeSelection();
+                } else if (targetId === 'download-pdf-button' || closestButtonId === 'download-pdf-button') {
+                    const { jsPDF } = window.jspdf;
+                    const reportContent = document.getElementById('report-content');
+                    if (reportContent) {
+                        html2canvas(reportContent, { 
+                            scale: 2, 
+                            backgroundColor: '#1a2a6c',
+                            useCORS: true 
+                        }).then(canvas => {
+                            const imgData = canvas.toDataURL('image/png');
+                            const pdf = new jsPDF('p', 'mm', 'a4');
+                            const pdfWidth = pdf.internal.pageSize.getWidth();
+                            const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+                            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                            pdf.save(`laporan-archetype-${userName.toLowerCase().replace(/\s/g, '-')}.pdf`);
+                        });
+                    }
+                }
+            });
+
+             function generatePrompt(baseData, mode, name) {
+                let context, viewTitle, emojiMap;
+                
+                if (mode === 'self') {
+                    viewTitle = `untuk ${name} (Diri Sendiri)`;
+                    emojiMap = { "Peran Alami": "🎭", "Kekuatan Kunci": "🏆", "Pendorong Utama": "❤️", "Jalan Kesuksesan": "🧭", "Minat Khas": "🎨", "Isi Ulang Energi": "⚡️" };
+                } else if (mode === 'kids') {
+                    viewTitle = `untuk ${name} (Anak)`;
+                    emojiMap = { "Potensi Peran": "🎭", "Bakat Menonjol": "🏆", "Pendorong Semangat": "❤️", "Minat Khas": "🎨", "Semangat Lagi Dengan": "⚡️" };
+                } else { 
+                    viewTitle = `untuk ${name} (Pasangan)`;
+                    emojiMap = { "Kelebihan": "💖", "Tantangan": "💔", "Bahasa Cinta": "💕", "Tips Harmonis": "🤝" };
+                }
+
+                context = `Anda adalah seorang ahli kepribadian yang ramah, modern, dan bijak, dengan gaya bahasa yang memotivasi. Tugas Anda adalah membuat konten untuk kartu-kartu infografis berdasarkan data inti untuk tipe kepribadian (Archetype) '${baseData.nama}'.\n`;
+                context += `Sudut pandang penjelasan adalah '${viewTitle}'. Selalu sebut nama '${name}' dalam penjelasan agar terasa sangat personal dan langsung.\n\nData Inti:\n`;
+                for (const [key, value] of Object.entries(baseData.points)) {
+                    context += `- ${key}: ${value}\n`;
+                }
+
+                context += "\nInstruksi Penting:\n";
+                context += "1. Buat konten untuk SETIAP poin data inti di atas.\n";
+                context += "2. Setiap konten WAJIB memiliki format: [EMOJI] [JUDUL] || [KONTEN PENJELASAN] || [CONTOH KASUS].\n";
+                context += "3. Gunakan emoji yang sesuai dari daftar ini: " + JSON.stringify(emojiMap) + ".\n";
+                context += "4. [KONTEN PENJELASAN] harus elaborasi yang dinamis, modern, dan personal dari data inti, dengan gaya bahasa yang menyemangati dan mudah dipahami.\n";
+                context += "5. [CONTOH KASUS] WAJIB diisi dengan contoh konkret, relevan, dan modern. Hindari contoh yang klise. Contoh: 'Bayangkan ${name} saat sedang mengatur proyek tim di Discord' atau 'Saat ${name} menemukan playlist Spotify baru yang sempurna'.\n";
+                context += "6. Gunakan '||' sebagai pemisah yang jelas antara tiga bagian tersebut.\n";
+                context += "7. Pisahkan setiap kartu (setiap poin) dengan baris baru ganda (\\n\\n).\n";
+                
+                return context;
+            }
+        });
+    </script>
+
+</body>
+</html>
